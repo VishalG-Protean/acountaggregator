@@ -1,0 +1,60 @@
+
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import '../../../../core/lib/models/tmdb/tmdb_movie_basic.dart';
+import '../../../../core/lib/ui/favourite_button.dart';
+import '../../../../core/lib/ui/movies_grid.dart';
+import '../../top_level_providers.dart';
+
+final favouriteMovieProvider =
+    StreamProvider.autoDispose.family<bool, TMDBMovieBasic>((ref, movie) {
+  final dataStore = ref.watch(dataStoreProvider);
+  final profilesData = ref.watch(profilesDataProvider);
+  if (profilesData.selectedId != null) {
+    return dataStore.favouriteMovie(
+        profileId: profilesData.selectedId!, movie: movie);
+  }
+  return Stream.empty();
+});
+
+class FavouritesMovieGrid extends StatelessWidget {
+  const FavouritesMovieGrid(
+      {Key? key, required this.movies, required this.controller})
+      : super(key: key);
+  final List<TMDBMovieBasic> movies;
+  final ScrollController controller;
+
+  @override
+  Widget build(BuildContext context) {
+    return MoviesGrid(
+      movies: movies,
+      controller: controller,
+      favouriteBuilder: (context, movie) {
+        return Consumer(
+          builder: (_, ref, __) {
+            final favouriteMovie = ref.watch(favouriteMovieProvider(movie));
+            return favouriteMovie.when(
+              data: (isFavourite) => FavouriteButton(
+                isFavourite: isFavourite,
+                onFavouriteChanged: (isFavourite) {
+                  final profilesData = ref.read(profilesDataProvider);
+                  if (profilesData.selectedId != null) {
+                    final dataStore = ref.read(dataStoreProvider);
+                    dataStore.setFavouriteMovie(
+                      profileId: profilesData.selectedId!,
+                      movie: movie,
+                      isFavourite: isFavourite,
+                    );
+                  }
+                },
+              ),
+              loading: () => Container(),
+              error: (_, __) => Container(),
+            );
+          },
+        );
+      },
+    );
+  }
+}
